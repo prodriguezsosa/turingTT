@@ -1,0 +1,12 @@
+name: turingTT
+title: turingTT
+username:
+account: prodriguezsosa
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2652338
+bundleId: 3490572
+url: https://prodriguezsosa.shinyapps.io/turingTT/
+when: 1596895390.96104
+asMultiple: FALSE
+asStatic: FALSE

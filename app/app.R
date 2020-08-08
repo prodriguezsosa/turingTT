@@ -1,26 +1,5 @@
-# ------------------------------
-#  SEMANTICA
-#  Authors: Pedro L Rodriguez
-#  Last modified: 02-25-2019
-#
-#   CODE SECTIONS
-#
-#   SECTION A: PRELIMS
-#   SECTION B: USER INTERFACE
-#   SECTION C: SERVER
-#
-# ------------------
-
-# --------------------------------
-#
-#
-# SECTION A: PRELIMS    ----
-#
-#
-# --------------------------------
-
 # --------------------------
-# SECTION A1: load libraries ----
+# load libraries
 # --------------------------
 library(shiny)
 library(rdrop2)
@@ -30,15 +9,10 @@ library(purrr)
 library(magrittr)
 library(data.table)
 
-# unique mturk id: glove - human & 6_300 - human: b57b888b6cb9a6cb456092deb3767bef
-# unique mturk id: glove - 6_300: 9c64e87374d0e7a641f1707665cfbfaf
-# unique mturk id: 6-300 48-300 d112d021c7964d7319326f79c9c5abc7
-# w2v vs glove: e30563d22a1cc478cdfac01af96cfc9c
-
 # --------------------------
-# SECTION A2: load data and functions----
+# load data and functions
 # --------------------------
-models <- c("glove", "w2v")
+models <- c("glove", "human")
 nn_list <- readRDS("data/nn_list.rds")
 screening_data <- readRDS("data/screening_data.rds")
 trial_data <- readRDS("data/trial_data.rds")
@@ -53,17 +27,14 @@ options(digits.secs = 6) # set timer precision
 compensation <- "1.00"
 
 # --------------------------
-# SECTION A3: data saving    -----
+# data saving
 # --------------------------
-saveDataLocation <- "dropbox"  # either dropbox, email, or local
-#outputDir <- "GitHub/EmbeddingsProject/RShiny/Triad Task/Output"  # directory to save data
-outputDir <- "NYU/Teaching/Text as Data/Embeddings/MTurk"  # directory to save data
-
-# Dropbox
-droptoken <- readRDS("droptoken.rds")   # reads in authentication for dropbox (must be store in same folder as this code)
+outputDir <- "GitHub/large_data/turingTT/output"  # directory to save data
+droptoken <- readRDS('----insert your dropbox token.rds here----')   # reads in authentication for dropbox (must be store in same folder as this code)
+# check out https://github.com/karthik/rdrop2 to see how to generate your auth tokens and link to your dropbox
 
 # --------------------------
-# SECTION A4: java scripts   -----
+# java scripts
 # --------------------------
 
 # js to register when keyboard is used
@@ -71,15 +42,13 @@ droptoken <- readRDS("droptoken.rds")   # reads in authentication for dropbox (m
 # to solve this we add a random number generator
 # see: https://stackoverflow.com/questions/35831811/register-repeated-keyboard-presses-in-shiny
 keyboard <- ' $(document).on("keydown", function (e) {
-Shiny.onInputChange("lastkeypresscode", [e.which, Math.random()]); 
+Shiny.onInputChange("lastkeypresscode", [e.which, Math.random()]);
 });
 '
 
 # --------------------------------
 #
-#
-# SECTION B: USER INTERFACE    ----
-#
+# USER INTERFACE
 #
 # --------------------------------
 ui <- fluidPage(
@@ -88,22 +57,17 @@ ui <- fluidPage(
   title = "Semantica",       # define title
   uiOutput("MainAction"),    # render function for dynamic ui
   tags$style(type = "text/css", ".recalculating {opacity: 1.0;}")   # prevents gray screen during Sys.sleep()
-  #tags$style("input[type=checkbox] {
-  #                  transform: scale(2.5);
-  #           }") # checkbox size # added it directly to css
 )
 
 # --------------------------------
 #
-#
-# SECTION C: SERVER FUNCTION     ----
-#
+# SERVER FUNCTION
 #
 # --------------------------------
 server <- function(input, output, session) {
-  
+
   # --------------------------
-  # SECTION A6: tt data.table      -----
+  # prepare triad task data
   # --------------------------
   N <- 1  # number of candidates to sample for each cue
   cues <- sample(names(nn_list[[1]])) # randomize order of cues
@@ -112,21 +76,21 @@ server <- function(input, output, session) {
   tt_data <- tt_data %>% mutate(workerid = as.character(NA), screener = FALSE, left.correct = as.character(NA), right.correct = as.character(NA))
   # reorder columns
   tt_data <- tt_data[c("workerid", "cue", "left.source", "right.source", "left.word", "right.word", "screener", "left.rank", "right.rank", "left.correct", "right.correct")]
-  
-  
+
+
   # add screening data
-  sd_data <- lapply(screening_data, function(screeni) tibble("workerid" = as.character(NA), 
-                                                             "cue" = screeni[1], 
-                                                             "left.source" = NA,  
-                                                             "right.source" = NA, 
-                                                             "left.word" = screeni[2], 
-                                                             "right.word" = screeni[3], 
+  sd_data <- lapply(screening_data, function(screeni) tibble("workerid" = as.character(NA),
+                                                             "cue" = screeni[1],
+                                                             "left.source" = NA,
+                                                             "right.source" = NA,
+                                                             "left.word" = screeni[2],
+                                                             "right.word" = screeni[3],
                                                              "screener" = TRUE,
                                                              "left.rank" = NA,
                                                              "right.rank" = NA,
                                                              "left.correct" = screeni[4],
                                                              "right.correct" = screeni[5])) %>% do.call(rbind, .)
-  
+
   tt_data <- rbind(tt_data, sd_data)
   # shuffle order
   tt_data <- tt_data %>% sample_n(nrow(tt_data))
@@ -135,9 +99,9 @@ server <- function(input, output, session) {
   # add nextInputID (defines next page)
   tt_data <-  tt_data %>% mutate(nextInputID = c(tt_data$variable[2:nrow(tt_data)], "survey"))
   num_tt <- nrow(tt_data)
-  
+
   # --------------------------
-  # SECTION A6: trial words      -----
+  # add trial words
   # --------------------------
   tt_trial <- lapply(trial_data, function(triali) tibble("cue" = triali[1], "left.word" = triali[2], "right.word" = triali[3], "left.correct" = triali[4], "right.correct" = triali[5])) %>% do.call(rbind, .)
   # shuffle order
@@ -148,50 +112,48 @@ server <- function(input, output, session) {
   if(length(trial_data) == 1){tt_trial$nextInputID <- "instructions3"}else{tt_trial$nextInputID <- c(tt_trial$variable[2:nrow(tt_trial)], "trial")}
   num_trials <- nrow(tt_trial)
   total_tasks <- num_trials + num_tt
-  
+
   # --------------------------------
-  #   SECTION C1: Define Reactive Values ----
-  #   These store the main values in the game
+  #   define reactive values
   # --------------------------------
-  
-  # CurrentValues stores scalars representing the latest game outcomes and values
-  
   CurrentValues <- reactiveValues(page = "welcome",
                                   errors = "none",
                                   trial_index = 1,
                                   index = 1)
 
   LexicalData <- reactiveValues()
-  
+
   # --------------------------------
-  # SECTION C2: Page Layouts         ----
+  # send dynamic UI to ui
   # --------------------------------
-  
-  # Send dynamic UI to ui - DON'T CHANGE!
   output$MainAction <- renderUI( {
     PageLayouts()
   })
-  
+
+  # --------------------------------
+  # define page layouts
+  # --------------------------------
   PageLayouts <- reactive({
+
     # --------------------------------
-    # (1) WELCOME PAGE                ---
+    # welcome page
     # --------------------------------
     if (CurrentValues$page == "welcome") {   # conditionl determining whether page is displayed
-      
+
       # conditional: if ID not entered, ouput inputLabel text in red to remind user that he must enter an ID
       if (CurrentValues$errors == "Blank_Name") {
-        inputLabel <- p(style = "color:Red", "Please enter your MTurk ID!")   
+        inputLabel <- p(style = "color:Red", "Please enter your MTurk ID!")
       } else {
         inputLabel <- p("Please enter your MTurk ID")
       }
-      
+
       # page content
       return(
         list(
           br(),
           h1(span(strong("Context Words"), style="color:#2780e3")),   # title
           br(),
-            mainPanel(    
+            mainPanel(
           p(span(strong("Purpose:"), style="color:#2780e3"),"evaluate context words."),
           p(span(strong("Confidentiality:"), style="color:#2780e3"), "responses are anonymous, we have no way of linking the data to individual identities."),
           p(span(strong("Length:"), style="color:#2780e3"), "task takes on average less than 5 minutes to complete."),
@@ -211,12 +173,12 @@ server <- function(input, output, session) {
           )
         )
       )}
-    
+
     # --------------------------------
-    # (4) INSTRUCTIONS - 1     ---
+    # instructions 1
     # --------------------------------
     if (CurrentValues$page == "instructions1") {   # conditionl determining whether page is displayed
-      
+
       # content
       return(
         list(
@@ -237,24 +199,24 @@ server <- function(input, output, session) {
           br(),
           p("For example, CONTEXT WORDS for the cue word COFFEE include:"),
           tags$ol(
-            tags$li(em("cup"), "(tends to occur in the vicinity of COFFEE)."), 
+            tags$li(em("cup"), "(tends to occur in the vicinity of COFFEE)."),
             tags$li(em("tea"), "(tends to occur in similar situations to COFFEE, for example when discussing drinks).")
           ),
           br(),
           p("Click ''Next'' to continue"),
           # action button to be pressed by user to continue
-          actionButton(inputId = "goto.instructions2",   # button ID 
-                       label = "Next",   # button label (text displayed to the user) 
+          actionButton(inputId = "goto.instructions2",   # button ID
+                       label = "Next",   # button label (text displayed to the user)
                        class = "btn btn-primary"),   # css class (defines button color as specified in the css file)
           br()
         )
       )}
-    
+
     # --------------------------------
-    # (4) INSTRUCTIONS - 1     ---
+    # instructions 2
     # --------------------------------
     if (CurrentValues$page == "instructions2") {   # conditionl determining whether page is displayed
-      
+
       # content
       return(
         list(
@@ -282,34 +244,30 @@ server <- function(input, output, session) {
           br(),
           p("Click ''Next'' to continue to the trial runs"),
           # action button to be pressed by user to continue
-          actionButton(inputId = "goto.trial1",   # button ID 
-                       label = "Next",   # button label (text displayed to the user) 
+          actionButton(inputId = "goto.trial1",   # button ID
+                       label = "Next",   # button label (text displayed to the user)
                        class = "btn btn-primary"),   # css class (defines button color as specified in the css file)
           br()
         )
       )}
-    
-    # --------------------------------
-    # (5) TEST ROUNDS - TT TASK ---
-    # --------------------------------
 
     # --------------------------------
-    # (4) trial - 2     ---
+    # trial rounds
     # --------------------------------
-    
+
     if (CurrentValues$page %in% tt_trial$variable){   # conditionl determining whether page is displayed
       CurrentValues$trial_index <- which(tt_trial$variable == CurrentValues$page)
       return(
-        TriadTask(title = paste0("Trial ", CurrentValues$trial_index, " of ", num_trials), variable = tt_trial$variable[CurrentValues$trial_index], 
-                            cue = tt_trial$cue[CurrentValues$trial_index], context = c(tt_trial$left.word[CurrentValues$trial_index], tt_trial$right.word[CurrentValues$trial_index]), 
+        TriadTask(title = paste0("Trial ", CurrentValues$trial_index, " of ", num_trials), variable = tt_trial$variable[CurrentValues$trial_index],
+                            cue = tt_trial$cue[CurrentValues$trial_index], context = c(tt_trial$left.word[CurrentValues$trial_index], tt_trial$right.word[CurrentValues$trial_index]),
                             nextInputID = tt_trial$nextInputID[CurrentValues$trial_index], CurrentValues = CurrentValues)
       )}
-    
+
     # --------------------------------
-    # (7) INSTRUCTIONS - 4     ---
+    # instructions 3
     # --------------------------------
     if (CurrentValues$page == "instructions3") {   # conditionl determining whether page is displayed
-      
+
       # content
       return(
         list(
@@ -318,38 +276,38 @@ server <- function(input, output, session) {
           br(),
           p("Thank you for completing the trial runs, if you feel ready to begin the real tasks, click ''Continue''. The first cue will immediately appear on the screen."),
           br(),
-          p("If you want to return to the instructions click on ''Back to instructions''."), 
+          p("If you want to return to the instructions click on ''Back to instructions''."),
           br(),
           # action button to be pressed by user to continue
-          
-          actionButton(inputId = "goto.lexical1",   # button ID 
-                       label = "Continue",   # button label (text displayed to the user) 
+
+          actionButton(inputId = "goto.lexical1",   # button ID
+                       label = "Continue",   # button label (text displayed to the user)
                        class = "btn btn-primary"),   # css class (defines button color as specified in the css file)
           HTML("<br><br>"),
-          actionButton(inputId = "goto.instructions2",   # button ID 
-                       label = "Back to instructions",   # button label (text displayed to the user) 
+          actionButton(inputId = "goto.instructions2",   # button ID
+                       label = "Back to instructions",   # button label (text displayed to the user)
                        class = "btn btn-primary"))   # css class (defines button color as specified in the css file)
       )}
-    
-    
+
+
     # --------------------------------
-    # (4) TT-1    ---
+    # triad task
     # --------------------------------
-    
+
     if (CurrentValues$page %in% tt_data$variable){   # conditionl determining whether page is displayed
     CurrentValues$index <- which(tt_data$variable == CurrentValues$page)
       return(
-        TriadTask(title = paste0("Task ", CurrentValues$index, " of ", num_tt), variable = tt_data$variable[CurrentValues$index], 
-                            cue = tt_data$cue[CurrentValues$index], context = c(tt_data$left.word[CurrentValues$index], tt_data$right.word[CurrentValues$index]), 
+        TriadTask(title = paste0("Task ", CurrentValues$index, " of ", num_tt), variable = tt_data$variable[CurrentValues$index],
+                            cue = tt_data$cue[CurrentValues$index], context = c(tt_data$left.word[CurrentValues$index], tt_data$right.word[CurrentValues$index]),
                             nextInputID = tt_data$nextInputID[CurrentValues$index], CurrentValues = CurrentValues)
       )}
-    
+
     # --------------------------------
-    # (4) SAVE DATA    ---
+    # save data
     # --------------------------------
-    
+
     if (CurrentValues$page == "savedata") {   # conditionl determining whether page is displayed
-      
+
       # content
       return(
         list(
@@ -358,39 +316,39 @@ server <- function(input, output, session) {
           br(),
           p("You have completed all the required tasks. To save your data and get your HIT completion code press ''Save my data''."),
           br(),
-          p("If for some reason you do not want to have your data saved, simply close this window (NOTE: you will not receive compensation)."), 
+          p("If for some reason you do not want to have your data saved, simply close this window (NOTE: you will not receive compensation)."),
           br(),
           # action button to be pressed by user to continue
-          
-          actionButton(inputId = "goto.goodbye",   # button ID 
-                       label = "Save my data",   # button label (text displayed to the user) 
+
+          actionButton(inputId = "goto.goodbye",   # button ID
+                       label = "Save my data",   # button label (text displayed to the user)
                        class = "btn btn-primary"))   # css class (defines button color as specified in the css file)
       )}
-    
+
     # --------------------------------
-    # (8) SURVEY        ---
+    # survey
     # --------------------------------
-    
+
     if (CurrentValues$page == "survey") {
-      
+
       # Throw an error if not all question have been answered.
       if (CurrentValues$errors == "answerQuestions") {
         answerQuestions <- p(style = "color:Red", "Please answer all required questions!")
       } else {
         answerQuestions <- ""
       }
-      
+
       return(list(
         br(),
         span(h2(strong("Survey (1 of 1)")), style="color:#2780e3"),
-        
+
         br(),
-        
+
         p("To conclude please fill out this short survey."),
-        
+
         br(),
-        
-        radioButtons("party", 
+
+        radioButtons("party",
                      label = "Generally speaking, do you usually think of yourself as a Democrat, a Republican, an Independent, or what?",
                      choices = c("Strong Democrat" =  1,
                                  "Weak Democrat" = 2,
@@ -402,10 +360,10 @@ server <- function(input, output, session) {
                                  "Other party" = 8,
                                  "No preference" = 9
                      ), selected = 99, width = "100%"),
-        
+
         br(),
-        
-        radioButtons("ideology", 
+
+        radioButtons("ideology",
                      label = "Generally speaking, do you usually think of yourself as a Liberal, a Conservative, a Moderate, or what?",
                      choices = c("Extremely liberal" =  1,
                                  "Liberal" = 2,
@@ -416,17 +374,17 @@ server <- function(input, output, session) {
                                  "Extremely conservative" = 7,
                                  "Haven't thought much about this" = 8
                      ), selected = 99, width = "100%"),
-        
+
         br(),
-        
+
         radioButtons("sex",
                      label = "What is your sex?",
                      choices = list("Male" = 1, "Female" = 2, "Other" = 3),
                      selected = 99, width = "100%"),
-        
+
         br(),
-        
-        radioButtons("interesting", 
+
+        radioButtons("interesting",
                      label = "How engaging did you find the HIT?",
                      choices = c("1 - Not at all engaging" =  1,
                                  "2" = 2,
@@ -434,10 +392,10 @@ server <- function(input, output, session) {
                                  "4" = 4,
                                  "5 - Very engaging" = 5
                      ), selected = 99, width = "100%"),
-        
+
         br(),
-        
-        radioButtons("fair", 
+
+        radioButtons("fair",
                      label = paste0("How fair would you say $", compensation, " is as compensation for this HIT?"),
                      choices = c("1 - Very unfair" =  1,
                                  "2" = 2,
@@ -445,32 +403,32 @@ server <- function(input, output, session) {
                                  "4" = 4,
                                  "5 - More than fair" = 5
                      ), selected = 99, width = "100%"),
-        
+
         br(),
-        
+
         textAreaInput("comments",
                       label = "If you have any additional comments (e.g. that can help us improve the task), please enter them below.",
                       resize = "both"),
-        
+
         br(),
-        
+
         p(answerQuestions),
-        
+
         actionButton(inputId = "savedata",
-                     label = "Next", 
+                     label = "Next",
                      class = "btn btn-primary"),
-        
+
         HTML("<br><br><br>"))
       )}
 
     # --------------------------------
-    # (18) GOODBYE    ---
+    # goodbye
     # --------------------------------
     if (CurrentValues$page == "goodbye") {
-      
-      # CALCULATE COMPLETION CODE  
+
+      # CALCULATE COMPLETION CODE for MTURK
       completion.code <- paste0("TT-", sample(100:999, size = 1), "-", sample(100:999, size = 1), "-", sample(100:999, size = 1))
-      
+
       return(list(
         br(),
         h3("Thank you for your participation!"),
@@ -485,12 +443,12 @@ server <- function(input, output, session) {
         p("You may proceed to close this window.")
       ))
     }
-    
+
     # --------------------------------
-    # (18) BOOTED   ---
+    # performance checks
     # --------------------------------
     if (CurrentValues$page == "booted1") {
-      
+
       return(list(
         br(),
         h3("SORRY!"),
@@ -504,13 +462,11 @@ server <- function(input, output, session) {
           br(),
           tags$li("Close this window and not complete the HIT (NOTE: you will not receive compensation).")),
         br()
-        #br(),
-        #p("You may proceed to close this window.")
       ))
     }
-    
+
     if (CurrentValues$page == "booted2") {
-      
+
       return(list(
         br(),
         h3("SORRY!"),
@@ -524,18 +480,16 @@ server <- function(input, output, session) {
           br(),
           tags$li("Close this window and not complete the HIT (NOTE: you will not receive compensation).")),
         br()
-        #br(),
-        #p("You may proceed to close this window.")
       ))
     }
-    
-    
+
+
   })
-  
+
   # --------------------------------
-  # SECTION C3: PAGE NAVIGATION        ----
+  # page navigation controls
   # --------------------------------
-  
+
   # consent page
   observeEvent(input$consent, {
     if (input$workerid == ""){
@@ -544,7 +498,7 @@ server <- function(input, output, session) {
       CurrentValues$page <- "instructions1"
     }
   })
-  
+
   # TTs trial
   observeEvent(input[[tt_trial$nextInputID[CurrentValues$trial_index]]], {
     if (input[[paste0(tt_trial$variable[CurrentValues$trial_index],".left")]] == input[[paste0(tt_trial$variable[CurrentValues$trial_index],".right")]]) {
@@ -553,12 +507,12 @@ server <- function(input, output, session) {
       if(tt_trial$left.correct[CurrentValues$trial_index] != input[[paste0(tt_trial$variable[CurrentValues$trial_index],".left")]]){
         CurrentValues$page <- "booted1"
       }else{
-      
+
       CurrentValues$page <- tt_trial$nextInputID[CurrentValues$trial_index]
       }
     }
   })
-  
+
   # TTs
   observeEvent(input[[tt_data$nextInputID[CurrentValues$index]]], {
     if (input[[paste0(tt_data$variable[CurrentValues$index],".left")]] == input[[paste0(tt_data$variable[CurrentValues$index],".right")]]) {
@@ -567,15 +521,15 @@ server <- function(input, output, session) {
       if(tt_data$screener[CurrentValues$index] & (tt_data$left.correct[CurrentValues$index] != input[[paste0(tt_data$variable[CurrentValues$index],".left")]])){
         CurrentValues$page <- "booted2"
       }else{
-      
+
       LexicalData[[tt_data$variable[CurrentValues$index]]] <- data.table(input[[paste0(tt_data$variable[CurrentValues$index],".left")]],
                                                                           input[[paste0(tt_data$variable[CurrentValues$index],".right")]])
-      
+
       CurrentValues$page <- tt_data$nextInputID[CurrentValues$index]
       }
     }
   })
-  
+
   # survey
   observeEvent(input$savedata, {
     # check wether all questions have been answered:
@@ -584,34 +538,34 @@ server <- function(input, output, session) {
     } else {
       CurrentValues$page <- "savedata"
     }})
-  
+
   # other
   observeEvent(input$goto.instructions2, CurrentValues$page <- "instructions2")
   observeEvent(input$goto.trial1, CurrentValues$page <- "trial1")
   observeEvent(input$goto.lexical1, CurrentValues$page <- "lexical1")
 
   # --------------------------------
-  # SECTION C5: SAVE DATA        ----
+  # save data controls
   # --------------------------------
   observeEvent(input[["goto.goodbye"]], {
-   
+
     # Create progress message
     withProgress(message = "Saving data...",
                  value = 0, {
-                   
+
                    incProgress(.25)
-                   
-                   # Write associations data
+
+                   # write associations data
                    LexicalData.i <- lapply(tt_data$variable, function(x) LexicalData[[x]])
                    LexicalData.i <- do.call(rbind, LexicalData.i) %>% set_colnames(., c("left.choice", "right.choice"))
                    tt_data$workerid <- input$workerid
                    LexicalData.i <- cbind(tt_data, LexicalData.i)
                    LexicalData.i <- LexicalData.i[LexicalData.i$screener == FALSE,] # keep only the non-screeners
                    LexicalData.i <- LexicalData.i[, c("workerid", "cue", "left.source", "right.source", "left.word", "right.word", "left.rank", "right.rank", "left.choice", "right.choice")]
-                   
-                   
-                   
-                   # Write survey data to a datatable
+
+
+
+                   # write survey data to a datatable
                    SurveyData.i <- data.table("workerid" = input$workerid,
                                               "sex" = input$sex,
                                               "party" = input$party,
@@ -619,36 +573,35 @@ server <- function(input, output, session) {
                                               "fair" = input$fair,
                                               "interesting" = input$interesting,
                                               "comments" = input$comments
-                                              #"interesting" = input$interesting
                    )
-                   
+
                    incProgress(.5)
-                   
+
                    LexicalDatafileName <- paste0(input$workerid, as.integer(Sys.time()), digest::digest(LexicalData.i), "_tt.csv")
                    SurveyDatafileName <- paste0(input$workerid, as.integer(Sys.time()), digest::digest(SurveyData.i), "_survey.csv")
-                   
-                   # Create The Filepath and save the data depending on the method chosen:
-                   
+
+                   # create filepath to dropbox folder
+
                    LexicalDatafilePath <- file.path(tempdir(), LexicalDatafileName)
                    write.csv(LexicalData.i, LexicalDatafilePath, row.names = TRUE, quote = TRUE)
                    rdrop2::drop_upload(LexicalDatafilePath, path = outputDir, dtoken = droptoken)
-                   
+
                    SurveyDatafilePath <- file.path(tempdir(), SurveyDatafileName)
                    write.csv(SurveyData.i, SurveyDatafilePath, row.names = FALSE, quote = TRUE)
                    rdrop2::drop_upload(SurveyDatafilePath, path = outputDir, dtoken = droptoken)
-                   
+
                    # report progress (of data saving) to the user
                    incProgress(.40)
-                   
+
                    # go to goodbye page
                    CurrentValues$page <- "goodbye"
                    Sys.sleep(.25)
                    incProgress(1)
                  })
   })
-  
+
   # --------------------------------
-  # SECTION C6: WHAT TO DO WHEN A KEY IS PRESSED ----
+  # WHAT TO DO WHEN A KEY IS PRESSED
   # http://www.javascripter.net/faq/keycodes.htm
   # --------------------------------
   # upon observing a key event
@@ -662,7 +615,7 @@ server <- function(input, output, session) {
       }
     }
   })
-  
+
 }
 
 # Create app!
